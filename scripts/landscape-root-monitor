@@ -7,11 +7,4 @@ if os.path.dirname(os.path.abspath(sys.argv[0])) == os.path.abspath("scripts"):
 
 from landscape.client.monitor.service import run_root
 
-
-# import debugpy
-# debugpy.listen(("0.0.0.0", 5678))
-# print("Waiting for debugger to attach...")
-# debugpy.wait_for_client()
-
-
 run_root(sys.argv)
