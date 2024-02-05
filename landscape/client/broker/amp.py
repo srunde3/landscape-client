@@ -9,6 +9,7 @@ from landscape.client.broker.client import BrokerClient
 from landscape.client.broker.server import BrokerServer
 from landscape.client.manager.manager import Manager
 from landscape.client.monitor.monitor import Monitor
+from landscape.client.monitor.monitor import RootMonitor
 from landscape.lib.amp import MethodCallArgument
 from landscape.lib.amp import RemoteObject
 
@@ -105,6 +106,12 @@ class RemoteMonitorConnector(RemoteClientConnector):
     """Helper to create connections with the L{Monitor}."""
 
     component = Monitor
+
+
+class RemoteRootMonitorConnector(RemoteClientConnector):
+    """Helper to create connections with the RootMonitor"""
+
+    component = RootMonitor
 
 
 class RemoteManagerConnector(RemoteClientConnector):

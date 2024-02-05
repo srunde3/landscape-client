@@ -29,6 +29,7 @@ from landscape.client import USER
 from landscape.client.broker.amp import RemoteBrokerConnector
 from landscape.client.broker.amp import RemoteManagerConnector
 from landscape.client.broker.amp import RemoteMonitorConnector
+from landscape.client.broker.amp import RemoteRootMonitorConnector
 from landscape.client.deployment import Configuration
 from landscape.client.deployment import init_logging
 from landscape.client.reactor import LandscapeReactor
@@ -384,7 +385,7 @@ class WatchDog:
             )
         if root_monitor is None and RootMonitor in enabled_daemons:
             root_monitor = RootMonitor(
-                RemoteMonitorConnector(landscape_reactor, config),
+                RemoteRootMonitorConnector(landscape_reactor, config),
                 verbose=verbose,
                 config=config.config,
                 extra_args=config.get_command_line_options(),

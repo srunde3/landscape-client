@@ -9,6 +9,7 @@ from landscape.client.broker.amp import RemoteBrokerConnector
 from landscape.client.monitor.config import MonitorConfiguration
 from landscape.client.monitor.config import RootMonitorConfiguration
 from landscape.client.monitor.monitor import Monitor
+from landscape.client.monitor.monitor import RootMonitor
 from landscape.client.service import LandscapeService
 from landscape.client.service import run_landscape_service
 
@@ -19,7 +20,8 @@ class MonitorService(LandscapeService):
     components when started.
     """
 
-    service_name = Monitor.name
+    service_class = Monitor
+    service_name = service_class.name
 
     def __init__(self, config):
         self.persist_filename = os.path.join(
@@ -28,7 +30,7 @@ class MonitorService(LandscapeService):
         )
         super().__init__(config)
         self.plugins = self.get_plugins()
-        self.monitor = Monitor(
+        self.monitor = self.service_class(
             self.reactor,
             self.config,
             self.persist,
@@ -97,11 +99,8 @@ def run(args):
 
 class RootMonitorService(MonitorService):
 
-    service_name = "root-monitor"
-
-    def __init__(self, config):
-        super().__init__(config)
-        self.monitor.name = "root-monitor"
+    service_class = RootMonitor
+    service_name = service_class.name
 
 
 def run_root(args):
