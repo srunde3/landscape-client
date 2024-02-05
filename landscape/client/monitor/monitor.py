@@ -37,3 +37,7 @@ class Monitor(BrokerClient):
         """Call C{exchange} on all plugins."""
         super().exchange()
         self.flush()
+
+
+class RootMonitor(Monitor):
+    name = "root-monitor"

@@ -51,3 +51,31 @@ class MonitorConfiguration(Configuration):
         if self.monitor_plugins == "ALL":
             return ALL_PLUGINS
         return [x.strip() for x in self.monitor_plugins.split(",")]
+
+
+class RootMonitorConfiguration(Configuration):
+    """Additional configuration for Landscape Root Monitor"""
+
+    def make_parser(self):
+
+        """
+        Specialize L{Configuration.make_parser}, adding many
+        monitor-specific options.
+        """
+
+        parser = super().make_parser()
+
+        parser.add_option(
+            "--root-monitor-plugins",
+            help="Comma-delimited list of monitor plugins to run as root.",
+            default=[],
+        )
+
+        return parser
+
+    @property
+    def plugin_factories(self):
+        if self.root_monitor_plugins:
+            return [x.strip() for x in self.root_monitor_plugins.split(",")]
+        else:
+            return []

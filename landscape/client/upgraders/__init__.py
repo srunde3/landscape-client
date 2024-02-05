@@ -7,5 +7,6 @@ UPGRADE_MANAGERS = {
     # these should not be hardcoded
     "broker": broker.upgrade_manager,
     "monitor": monitor.upgrade_manager,
+    "root-monitor": monitor.root_upgrade_manager,
     "package": package.upgrade_manager,
 }

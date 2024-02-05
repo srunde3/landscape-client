@@ -86,7 +86,14 @@ class Daemon:
 
     BIN_DIR = None
 
-    def __init__(self, connector, reactor=reactor, verbose=False, config=None):
+    def __init__(
+        self,
+        connector,
+        reactor=reactor,
+        verbose=False,
+        config=None,
+        extra_args=None,
+    ):
         self._connector = connector
         self._reactor = reactor
         self._env = os.environ.copy()
@@ -247,6 +254,11 @@ class Monitor(Daemon):
     program = "landscape-monitor"
 
 
+class RootMonitor(Daemon):
+    program = "landscape-root-monitor"
+    username = "root"
+
+
 class Manager(Daemon):
     program = "landscape-manager"
     username = "root"
@@ -350,12 +362,13 @@ class WatchDog:
         config=None,
         broker=None,
         monitor=None,
+        root_monitor=None,
         manager=None,
         enabled_daemons=None,
     ):
         landscape_reactor = LandscapeReactor()
         if enabled_daemons is None:
-            enabled_daemons = [Broker, Monitor, Manager]
+            enabled_daemons = [Broker, Monitor, RootMonitor, Manager]
         if broker is None and Broker in enabled_daemons:
             broker = Broker(
                 RemoteBrokerConnector(landscape_reactor, config),
@@ -367,6 +380,14 @@ class WatchDog:
                 RemoteMonitorConnector(landscape_reactor, config),
                 verbose=verbose,
                 config=config.config,
+                extra_args=config.get_command_line_options(),
+            )
+        if root_monitor is None and RootMonitor in enabled_daemons:
+            root_monitor = RootMonitor(
+                RemoteMonitorConnector(landscape_reactor, config),
+                verbose=verbose,
+                config=config.config,
+                extra_args=config.get_command_line_options(),
             )
         if manager is None and Manager in enabled_daemons:
             manager = Manager(
@@ -377,10 +398,16 @@ class WatchDog:
 
         self.broker = broker
         self.monitor = monitor
+        self.root_monitor = root_monitor
         self.manager = manager
         self.daemons = [
             daemon
-            for daemon in [self.broker, self.monitor, self.manager]
+            for daemon in [
+                self.broker,
+                self.monitor,
+                self.root_monitor,
+                self.manager,
+            ]
             if daemon
         ]
         self.reactor = reactor
@@ -524,12 +551,19 @@ class WatchDogConfiguration(Configuration):
             "useful if you want to run the client as a non-root "
             "user.",
         )
+        parser.add_option(
+            "--root-monitor-plugins",
+            help="Comma-delimited list of monitor plugins to run as root.",
+            default="",
+        )
         return parser
 
     def get_enabled_daemons(self):
         daemons = [Broker, Monitor]
         if not self.monitor_only:
             daemons.append(Manager)
+        if self.root_monitor_plugins:
+            daemons.append(RootMonitor)
         return daemons
 
 

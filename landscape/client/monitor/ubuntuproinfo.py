@@ -10,7 +10,7 @@ class UbuntuProInfo(DataWatcher):
     Plugin that captures and reports Ubuntu Pro registration
     information.
 
-    We use the `ua` CLI with output formatted as JSON. This is sent
+    We use the `pro` CLI with output formatted as JSON. This is sent
     as-is and parsed by Landscape Server because the JSON content is
     considered "Experimental" and we don't want to have to change in
     both Client and Server in the event that the format changes.
@@ -43,7 +43,7 @@ def get_ubuntu_pro_info() -> dict:
 
     try:
         completed_process = subprocess.run(
-            ["ua", "status", "--format", "json"],
+            ["pro", "status", "--format", "json"],
             encoding="utf8",
             stdout=subprocess.PIPE,
         )

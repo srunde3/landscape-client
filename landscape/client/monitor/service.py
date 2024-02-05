@@ -7,6 +7,7 @@ from twisted.python.reflect import namedClass
 from landscape.client.amp import ComponentPublisher
 from landscape.client.broker.amp import RemoteBrokerConnector
 from landscape.client.monitor.config import MonitorConfiguration
+from landscape.client.monitor.config import RootMonitorConfiguration
 from landscape.client.monitor.monitor import Monitor
 from landscape.client.service import LandscapeService
 from landscape.client.service import run_landscape_service
@@ -92,3 +93,16 @@ class MonitorService(LandscapeService):
 
 def run(args):
     run_landscape_service(MonitorConfiguration, MonitorService, args)
+
+
+class RootMonitorService(MonitorService):
+
+    service_name = "root-monitor"
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.monitor.name = "root-monitor"
+
+
+def run_root(args):
+    run_landscape_service(RootMonitorConfiguration, RootMonitorService, args)
