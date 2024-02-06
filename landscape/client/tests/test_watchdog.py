@@ -27,6 +27,7 @@ from landscape.client.watchdog import Manager
 from landscape.client.watchdog import MAXIMUM_CONSECUTIVE_RESTARTS
 from landscape.client.watchdog import Monitor
 from landscape.client.watchdog import RESTART_BURST_DELAY
+from landscape.client.watchdog import RootMonitor
 from landscape.client.watchdog import run
 from landscape.client.watchdog import WatchDog
 from landscape.client.watchdog import WatchDogConfiguration
@@ -1161,6 +1162,19 @@ class WatchDogOptionsTest(LandscapeTest):
             self.config.get_enabled_daemons(),
             [Broker, Monitor, Manager],
         )
+
+    def test_load_root_monitor(self):
+        self.config.load(["--root-monitor-plugins", "UbuntuProInfo"])
+        self.assertEqual(
+            self.config.get_enabled_daemons(),
+            [Broker, Monitor, RootMonitor, Manager],
+        )
+
+    def test_root_monitors_take_priority(self):
+        """
+        Passing the same plugin with root and regular Monitors will only spawn
+        that plugin under the root monitor daemon.
+        """
 
 
 class WatchDogServiceTest(LandscapeTest):

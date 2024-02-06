@@ -2,12 +2,12 @@ from unittest.mock import Mock
 from unittest.mock import patch
 
 from landscape.client.monitor.computerinfo import ComputerInfo
-from landscape.client.monitor.config import ALL_PLUGINS
 from landscape.client.monitor.config import MonitorConfiguration
 from landscape.client.monitor.loadaverage import LoadAverage
 from landscape.client.monitor.service import MonitorService
 from landscape.client.tests.helpers import FakeBrokerServiceHelper
 from landscape.client.tests.helpers import LandscapeTest
+from landscape.client.watchdog import ALL_MONITOR_PLUGINS
 from landscape.lib.testing import FakeReactor
 
 
@@ -31,7 +31,7 @@ class MonitorServiceTest(LandscapeTest):
         By default the L{MonitorService.plugins} list holds an instance of
         every enabled monitor plugin.
         """
-        self.assertEqual(len(self.service.plugins), len(ALL_PLUGINS))
+        self.assertEqual(len(self.service.plugins), len(ALL_MONITOR_PLUGINS))
 
     def test_get_plugins(self):
         """
