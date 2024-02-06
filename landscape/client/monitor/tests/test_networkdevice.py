@@ -56,4 +56,7 @@ class NetworkDeviceTest(LandscapeTest):
 
     def test_config(self):
         """The network device plugin is enabled by default."""
-        self.assertIn("NetworkDevice", self.config.plugin_factories)
+        self.assertIn(
+            "NetworkDevice",
+            self.config.get_landscape_plugin_factories(),
+        )

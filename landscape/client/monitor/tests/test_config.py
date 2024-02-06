@@ -1,8 +1,6 @@
-import mock
-
+from landscape.client.monitor.config import ALL_PLUGINS
 from landscape.client.monitor.config import MonitorConfiguration
 from landscape.client.tests.helpers import LandscapeTest
-from landscape.client.watchdog import ALL_MONITOR_PLUGINS
 
 
 class MonitorConfigurationTest(LandscapeTest):
@@ -14,7 +12,11 @@ class MonitorConfigurationTest(LandscapeTest):
         """
         By default all plugins are enabled.
         """
-        self.assertEqual(self.config.plugin_factories, ALL_MONITOR_PLUGINS)
+        self.assertListEqual(
+            self.config.get_landscape_plugin_factories(),
+            ALL_PLUGINS,
+        )
+        self.assertEqual(self.config.get_root_plugin_factories(), [])
 
     def test_plugin_factories_with_monitor_plugins(self):
         """
@@ -23,7 +25,7 @@ class MonitorConfigurationTest(LandscapeTest):
         """
         self.config.load(["--monitor-plugins", "  ComputerInfo, LoadAverage "])
         self.assertEqual(
-            self.config.plugin_factories,
+            self.config.get_landscape_plugin_factories(),
             ["ComputerInfo", "LoadAverage"],
         )
 
@@ -48,12 +50,10 @@ class MonitorConfigurationTest(LandscapeTest):
             ],
         )
         self.assertEqual(
-            self.config.plugin_factories,
+            self.config.get_landscape_plugin_factories(),
             ["ComputerInfo", "LoadAverage"],
         )
-
-        with mock.patch(
-            "landscape.client.monitor.config.is_running_as_root",
-        ) as m:
-            m.return_value = True
-            self.assertEqual(self.config.plugin_factories, ["UbuntuProInfo"])
+        self.assertEqual(
+            self.config.get_root_plugin_factories(),
+            ["UbuntuProInfo"],
+        )

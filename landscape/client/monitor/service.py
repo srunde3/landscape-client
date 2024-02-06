@@ -28,6 +28,7 @@ class MonitorService(LandscapeService):
             f"{self.service_name}.bpickle",
         )
         super().__init__(config)
+        self.get_plugin_factories = self.config.get_landscape_plugin_factories
         self.plugins = self.get_plugins()
         self.monitor = self.service_class(
             self.reactor,
@@ -44,7 +45,7 @@ class MonitorService(LandscapeService):
     def get_plugins(self):
         plugins = []
 
-        for plugin_name in self.config.plugin_factories:
+        for plugin_name in self.get_plugin_factories():
             try:
                 plugin = namedClass(
                     "landscape.client.monitor."
@@ -100,6 +101,10 @@ class RootMonitorService(MonitorService):
 
     service_class = RootMonitor
     service_name = service_class.name
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.get_plugin_factories = self.config.get_root_plugin_factories
 
 
 def run_root(args):

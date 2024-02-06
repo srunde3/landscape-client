@@ -48,30 +48,9 @@ RESTART_BURST_DELAY = 30  # seconds
 SIGKILL_DELAY = 10
 
 
-ALL_MONITOR_PLUGINS = [
-    "ActiveProcessInfo",
-    "ComputerInfo",
-    "LoadAverage",
-    "MemoryInfo",
-    "MountInfo",
-    "ProcessorInfo",
-    "Temperature",
-    "PackageMonitor",
-    "UserMonitor",
-    "RebootRequired",
-    "AptPreferences",
-    "NetworkActivity",
-    "NetworkDevice",
-    "UpdateManager",
-    "CPUUsage",
-    "SwiftUsage",
-    "CephUsage",
-    "ComputerTags",
-    "UbuntuProInfo",
-    "LivePatch",
-    "UbuntuProRebootRequired",
-    "SnapMonitor",
-]
+# Address issue with pro client needing sudo to get status
+# https://bugs.launchpad.net/landscape-client/+bug/2037670
+DEFAULT_ROOT_MONITOR_PLUGINS = ["UbuntuProInfo"]
 
 
 class DaemonError(Exception):
@@ -119,7 +98,6 @@ class Daemon:
         reactor=reactor,
         verbose=False,
         config=None,
-        extra_args=None,
     ):
         self._connector = connector
         self._reactor = reactor
@@ -395,7 +373,7 @@ class WatchDog:
     ):
         landscape_reactor = LandscapeReactor()
         if enabled_daemons is None:
-            enabled_daemons = [Broker, Monitor, RootMonitor, Manager]
+            enabled_daemons = [Broker, Monitor, Manager]
         if broker is None and Broker in enabled_daemons:
             broker = Broker(
                 RemoteBrokerConnector(landscape_reactor, config),
@@ -407,14 +385,12 @@ class WatchDog:
                 RemoteMonitorConnector(landscape_reactor, config),
                 verbose=verbose,
                 config=config.config,
-                extra_args=config.get_command_line_options(),
             )
         if root_monitor is None and RootMonitor in enabled_daemons:
             root_monitor = RootMonitor(
                 RemoteRootMonitorConnector(landscape_reactor, config),
                 verbose=verbose,
                 config=config.config,
-                extra_args=config.get_command_line_options(),
             )
         if manager is None and Manager in enabled_daemons:
             manager = Manager(
@@ -581,7 +557,7 @@ class WatchDogConfiguration(Configuration):
         parser.add_option(
             "--root-monitor-plugins",
             help="Comma-delimited list of monitor plugins to run as root.",
-            default="",
+            default=",".join(DEFAULT_ROOT_MONITOR_PLUGINS),
         )
         return parser
 

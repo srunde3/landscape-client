@@ -1,7 +1,30 @@
-import os
-
 from landscape.client.deployment import Configuration
-from landscape.client.watchdog import ALL_MONITOR_PLUGINS
+
+
+ALL_PLUGINS = [
+    "ActiveProcessInfo",
+    "ComputerInfo",
+    "LoadAverage",
+    "MemoryInfo",
+    "MountInfo",
+    "ProcessorInfo",
+    "Temperature",
+    "PackageMonitor",
+    "UserMonitor",
+    "RebootRequired",
+    "AptPreferences",
+    "NetworkActivity",
+    "NetworkDevice",
+    "UpdateManager",
+    "CPUUsage",
+    "SwiftUsage",
+    "CephUsage",
+    "ComputerTags",
+    "UbuntuProInfo",
+    "LivePatch",
+    "UbuntuProRebootRequired",
+    "SnapMonitor",
+]
 
 
 class MonitorConfiguration(Configuration):
@@ -28,29 +51,18 @@ class MonitorConfiguration(Configuration):
         )
         return parser
 
-    @property
-    def plugin_factories(self):
-        if is_running_as_root():
-            return self.root_plugins_factories
-        else:
-            return self.landscape_plugin_factories
-
-    @property
-    def root_plugins_factories(self):
+    def get_root_plugin_factories(self):
         if self.root_monitor_plugins:
             return [x.strip() for x in self.root_monitor_plugins.split(",")]
         else:
             return []
 
-    @property
-    def landscape_plugin_factories(self):
+    def get_landscape_plugin_factories(self):
         if self.monitor_plugins == "ALL":
-            plugins = ALL_MONITOR_PLUGINS
+            plugins = ALL_PLUGINS
         else:
             plugins = [x.strip() for x in self.monitor_plugins.split(",")]
 
-        return [x for x in plugins if x not in self.root_plugins_factories]
-
-
-def is_running_as_root():
-    return os.getuid() == 0
+        return [
+            x for x in plugins if x not in self.get_root_plugin_factories()
+        ]

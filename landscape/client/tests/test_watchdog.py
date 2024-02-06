@@ -56,6 +56,10 @@ class WatchDogTest(LandscapeTest):
             "landscape.client.watchdog.Monitor",
         )
         self.monitor_factory = self.monitor_factory_patch.start()
+        self.root_monitor_factory_patch = mock.patch(
+            "landscape.client.watchdog.RootMonitor",
+        )
+        self.root_monitor_factory = self.root_monitor_factory_patch.start()
         self.manager_factory_patch = mock.patch(
             "landscape.client.watchdog.Manager",
         )
@@ -71,12 +75,15 @@ class WatchDogTest(LandscapeTest):
     def setup_daemons_mocks(self):
         self.broker = mock.Mock()
         self.monitor = mock.Mock()
+        self.root_monitor = mock.Mock()
         self.manager = mock.Mock()
         self.broker_factory.return_value = self.broker
         self.monitor_factory.return_value = self.monitor
+        self.root_monitor_factory.return_value = self.root_monitor
         self.manager_factory.return_value = self.manager
         self.broker.program = "landscape-broker"
         self.monitor.program = "landscape-monitor"
+        self.root_monitor.program = "landscape-root-monitor"
         self.manager.program = "landscape-manager"
 
     def assert_daemons_mocks(self):
@@ -195,6 +202,7 @@ class WatchDogTest(LandscapeTest):
 
         self.broker.start()
         self.monitor.start()
+        self.root_monitor.start()
         self.manager.start()
 
         self.setup_request_exit()
@@ -248,12 +256,15 @@ class WatchDogTest(LandscapeTest):
 
         self.broker.start()
         self.monitor.start()
+        self.root_monitor.start()
         self.manager.start()
 
         monitor_ping_result = Deferred()
+        root_monitor_ping_result = Deferred()
 
         self.broker.is_running.return_value = succeed(True)
         self.monitor.is_running.return_value = monitor_ping_result
+        self.root_monitor.is_running.return_value = root_monitor_ping_result
         self.manager.is_running.return_value = succeed(True)
 
         self.setup_request_exit()
@@ -266,12 +277,15 @@ class WatchDogTest(LandscapeTest):
         clock.advance(5)
         result = dog.request_exit()
         monitor_ping_result.callback(False)
+        root_monitor_ping_result.callback(False)
 
         def check(_):
             # The monitor should never be explicitly stopped / restarted.
             self.monitor.stop.assert_not_called()
+            self.root_monitor.stop.assert_not_called()
             # Start *is* called
             self.monitor.start.call_count = 2
+            self.root_monitor.start.call_count = 2
             self.assert_request_exit()
 
         return result.addCallback(check)
@@ -346,6 +360,7 @@ class NonMockerWatchDogTests(LandscapeTest):
             clock,
             broker=AsynchronousPingDaemon("test-broker"),
             monitor=AsynchronousPingDaemon("test-monitor"),
+            root_monitor=AsynchronousPingDaemon("test-root-monitor"),
             manager=AsynchronousPingDaemon("test-manager"),
         )
 
@@ -372,6 +387,7 @@ class NonMockerWatchDogTests(LandscapeTest):
             clock,
             broker=AsynchronousPingDaemon("test-broker"),
             monitor=AsynchronousPingDaemon("test-monitor"),
+            root_monitor=AsynchronousPingDaemon("test-root-monitor"),
             manager=AsynchronousPingDaemon("test-manager"),
         )
         dog.start_monitoring()
@@ -380,6 +396,7 @@ class NonMockerWatchDogTests(LandscapeTest):
             clock.advance(5)
             dog.broker.fire_running(False)
             dog.monitor.fire_running(True)
+            dog.root_monitor.fire_running(True)
             dog.manager.fire_running(True)
             self.assertEqual(dog.broker.boots, [])
 
@@ -399,6 +416,7 @@ class NonMockerWatchDogTests(LandscapeTest):
             clock,
             broker=AsynchronousPingDaemon("test-broker"),
             monitor=AsynchronousPingDaemon("test-monitor"),
+            root_monitor=AsynchronousPingDaemon("test-root-monitor"),
             manager=AsynchronousPingDaemon("test-manager"),
         )
         dog.start_monitoring()
@@ -406,23 +424,28 @@ class NonMockerWatchDogTests(LandscapeTest):
         clock.advance(5)
         dog.broker.fire_running(False)
         dog.monitor.fire_running(True)
+        dog.root_monitor.fire_running(True)
+
         dog.manager.fire_running(True)
 
         clock.advance(5)
         dog.broker.fire_running(True)
         dog.monitor.fire_running(True)
+        dog.root_monitor.fire_running(True)
         dog.manager.fire_running(True)
 
         for i in range(4):
             clock.advance(5)
             dog.broker.fire_running(False)
             dog.monitor.fire_running(True)
+            dog.root_monitor.fire_running(True)
             dog.manager.fire_running(True)
             self.assertEqual(dog.broker.boots, [])
 
         clock.advance(5)
         dog.broker.fire_running(False)
         dog.monitor.fire_running(True)
+        dog.root_monitor.fire_running(True)
         dog.manager.fire_running(True)
         self.assertEqual(dog.broker.boots, [STOP, START])
 
@@ -437,6 +460,7 @@ class NonMockerWatchDogTests(LandscapeTest):
             clock,
             broker=BoringDaemon("test-broker"),
             monitor=BoringDaemon("test-monitor"),
+            root_monitor=BoringDaemon("test-root-monitor"),
             manager=AsynchronousPingDaemon("test-manager"),
         )
         dog.start_monitoring()
@@ -453,6 +477,7 @@ class NonMockerWatchDogTests(LandscapeTest):
             clock,
             broker=AsynchronousPingDaemon("test-broker"),
             monitor=BoringDaemon("test-monitor"),
+            root_monitor=BoringDaemon("test-root-monitor"),
             manager=BoringDaemon("test-manager"),
         )
         stop_result = Deferred()
@@ -477,6 +502,7 @@ class NonMockerWatchDogTests(LandscapeTest):
             clock,
             broker=AsynchronousPingDaemon("test-broker"),
             monitor=BoringDaemon("test-monitor"),
+            root_monitor=BoringDaemon("test-root-monitor"),
             manager=BoringDaemon("test-manager"),
         )
         stop_result = Deferred()
@@ -507,6 +533,7 @@ class NonMockerWatchDogTests(LandscapeTest):
             clock,
             broker=AsynchronousPingDaemon("test-broker"),
             monitor=BoringDaemon("test-monitor"),
+            root_monitor=BoringDaemon("test-root-monitor"),
             manager=BoringDaemon("test-manager"),
         )
         dog.start_monitoring()
@@ -538,6 +565,7 @@ class NonMockerWatchDogTests(LandscapeTest):
             clock,
             broker=BoringDaemon("test-broker"),
             monitor=BoringDaemon("test-monitor"),
+            root_monitor=BoringDaemon("test-root-monitor"),
             manager=BoringDaemon("test-manager"),
         )
 
@@ -1154,13 +1182,21 @@ class WatchDogOptionsTest(LandscapeTest):
 
     def test_monitor_only(self):
         self.config.load(["--monitor-only"])
-        self.assertEqual(self.config.get_enabled_daemons(), [Broker, Monitor])
+        self.assertEqual(
+            self.config.get_enabled_daemons(),
+            [Broker, Monitor, RootMonitor],
+        )
 
     def test_default_daemons(self):
         self.config.load([])
         self.assertEqual(
             self.config.get_enabled_daemons(),
-            [Broker, Monitor, Manager],
+            [
+                Broker,
+                Monitor,
+                RootMonitor,
+                Manager,
+            ],
         )
 
     def test_load_root_monitor(self):
@@ -1169,12 +1205,6 @@ class WatchDogOptionsTest(LandscapeTest):
             self.config.get_enabled_daemons(),
             [Broker, Monitor, RootMonitor, Manager],
         )
-
-    def test_root_monitors_take_priority(self):
-        """
-        Passing the same plugin with root and regular Monitors will only spawn
-        that plugin under the root monitor daemon.
-        """
 
 
 class WatchDogServiceTest(LandscapeTest):
