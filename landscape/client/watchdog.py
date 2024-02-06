@@ -48,6 +48,32 @@ RESTART_BURST_DELAY = 30  # seconds
 SIGKILL_DELAY = 10
 
 
+ALL_MONITOR_PLUGINS = [
+    "ActiveProcessInfo",
+    "ComputerInfo",
+    "LoadAverage",
+    "MemoryInfo",
+    "MountInfo",
+    "ProcessorInfo",
+    "Temperature",
+    "PackageMonitor",
+    "UserMonitor",
+    "RebootRequired",
+    "AptPreferences",
+    "NetworkActivity",
+    "NetworkDevice",
+    "UpdateManager",
+    "CPUUsage",
+    "SwiftUsage",
+    "CephUsage",
+    "ComputerTags",
+    "UbuntuProInfo",
+    "LivePatch",
+    "UbuntuProRebootRequired",
+    "SnapMonitor",
+]
+
+
 class DaemonError(Exception):
     """One of the daemons could not be started."""
 
@@ -561,10 +587,10 @@ class WatchDogConfiguration(Configuration):
 
     def get_enabled_daemons(self):
         daemons = [Broker, Monitor]
-        if not self.monitor_only:
-            daemons.append(Manager)
         if self.root_monitor_plugins:
             daemons.append(RootMonitor)
+        if not self.monitor_only:
+            daemons.append(Manager)
         return daemons
 
 

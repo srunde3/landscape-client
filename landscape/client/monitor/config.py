@@ -1,30 +1,7 @@
+import os
+
 from landscape.client.deployment import Configuration
-
-
-ALL_PLUGINS = [
-    "ActiveProcessInfo",
-    "ComputerInfo",
-    "LoadAverage",
-    "MemoryInfo",
-    "MountInfo",
-    "ProcessorInfo",
-    "Temperature",
-    "PackageMonitor",
-    "UserMonitor",
-    "RebootRequired",
-    "AptPreferences",
-    "NetworkActivity",
-    "NetworkDevice",
-    "UpdateManager",
-    "CPUUsage",
-    "SwiftUsage",
-    "CephUsage",
-    "ComputerTags",
-    "UbuntuProInfo",
-    "LivePatch",
-    "UbuntuProRebootRequired",
-    "SnapMonitor",
-]
+from landscape.client.watchdog import ALL_MONITOR_PLUGINS
 
 
 class MonitorConfiguration(Configuration):
@@ -44,38 +21,36 @@ class MonitorConfiguration(Configuration):
             "use. ALL means use all plugins.",
             default="ALL",
         )
-        return parser
-
-    @property
-    def plugin_factories(self):
-        if self.monitor_plugins == "ALL":
-            return ALL_PLUGINS
-        return [x.strip() for x in self.monitor_plugins.split(",")]
-
-
-class RootMonitorConfiguration(Configuration):
-    """Additional configuration for Landscape Root Monitor"""
-
-    def make_parser(self):
-
-        """
-        Specialize L{Configuration.make_parser}, adding many
-        monitor-specific options.
-        """
-
-        parser = super().make_parser()
-
         parser.add_option(
             "--root-monitor-plugins",
             help="Comma-delimited list of monitor plugins to run as root.",
             default=[],
         )
-
         return parser
 
     @property
     def plugin_factories(self):
+        if is_running_as_root():
+            return self.root_plugins_factories
+        else:
+            return self.landscape_plugin_factories
+
+    @property
+    def root_plugins_factories(self):
         if self.root_monitor_plugins:
             return [x.strip() for x in self.root_monitor_plugins.split(",")]
         else:
             return []
+
+    @property
+    def landscape_plugin_factories(self):
+        if self.monitor_plugins == "ALL":
+            plugins = ALL_MONITOR_PLUGINS
+        else:
+            plugins = [x.strip() for x in self.monitor_plugins.split(",")]
+
+        return [x for x in plugins if x not in self.root_plugins_factories]
+
+
+def is_running_as_root():
+    return os.getuid() == 0
