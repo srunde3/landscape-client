@@ -199,7 +199,7 @@ class BrokerClient:
         If the plugin has a C{plugin_name} attribute, it will be possible to
         look up the plugin later with L{get_plugin}.
         """
-        user = os.geteuid()
+        user = os.geteuid()  # TODO remove
         info("Registering plugin %s as user %s.", format_object(plugin), user)
         self._plugins.append(plugin)
         if hasattr(plugin, "plugin_name"):

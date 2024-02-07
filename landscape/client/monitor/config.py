@@ -1,4 +1,5 @@
 from landscape.client.deployment import Configuration
+from landscape.client.watchdog import DEFAULT_ROOT_MONITOR_PLUGINS
 
 
 ALL_PLUGINS = [
@@ -47,7 +48,7 @@ class MonitorConfiguration(Configuration):
         parser.add_option(
             "--root-monitor-plugins",
             help="Comma-delimited list of monitor plugins to run as root.",
-            default=[],
+            default=",".join(DEFAULT_ROOT_MONITOR_PLUGINS),
         )
         return parser
 

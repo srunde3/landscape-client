@@ -1,6 +1,7 @@
 from landscape.client.monitor.config import ALL_PLUGINS
 from landscape.client.monitor.config import MonitorConfiguration
 from landscape.client.tests.helpers import LandscapeTest
+from landscape.client.watchdog import DEFAULT_ROOT_MONITOR_PLUGINS
 
 
 class MonitorConfigurationTest(LandscapeTest):
@@ -10,13 +11,18 @@ class MonitorConfigurationTest(LandscapeTest):
 
     def test_plugin_factories(self):
         """
-        By default all plugins are enabled.
+        By default all plugins are enabled and DEFAULT_ROOT_MONITOR_PLUGINS
+        only exist in root_plugin_factories
         """
-        self.assertListEqual(
-            self.config.landscape_plugin_factories,
-            ALL_PLUGINS,
+        expected = set(ALL_PLUGINS) - set(DEFAULT_ROOT_MONITOR_PLUGINS)
+        self.assertSetEqual(
+            set(self.config.landscape_plugin_factories),
+            expected,
         )
-        self.assertEqual(self.config.root_plugin_factories, [])
+        self.assertEqual(
+            self.config.root_plugin_factories,
+            DEFAULT_ROOT_MONITOR_PLUGINS,
+        )
 
     def test_plugin_factories_with_monitor_plugins(self):
         """
