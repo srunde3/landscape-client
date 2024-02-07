@@ -51,18 +51,18 @@ class MonitorConfiguration(Configuration):
         )
         return parser
 
-    def get_root_plugin_factories(self):
+    @property
+    def root_plugin_factories(self):
         if self.root_monitor_plugins:
             return [x.strip() for x in self.root_monitor_plugins.split(",")]
         else:
             return []
 
-    def get_landscape_plugin_factories(self):
+    @property
+    def landscape_plugin_factories(self):
         if self.monitor_plugins == "ALL":
             plugins = ALL_PLUGINS
         else:
             plugins = [x.strip() for x in self.monitor_plugins.split(",")]
 
-        return [
-            x for x in plugins if x not in self.get_root_plugin_factories()
-        ]
+        return [x for x in plugins if x not in self.root_plugin_factories]

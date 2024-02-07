@@ -58,5 +58,5 @@ class NetworkDeviceTest(LandscapeTest):
         """The network device plugin is enabled by default."""
         self.assertIn(
             "NetworkDevice",
-            self.config.get_landscape_plugin_factories(),
+            self.config.landscape_plugin_factories,
         )

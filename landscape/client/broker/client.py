@@ -1,3 +1,4 @@
+import os
 import random
 import sys
 import traceback
@@ -198,7 +199,8 @@ class BrokerClient:
         If the plugin has a C{plugin_name} attribute, it will be possible to
         look up the plugin later with L{get_plugin}.
         """
-        info("Registering plugin %s.", format_object(plugin))
+        user = os.geteuid()
+        info("Registering plugin %s as user %s.", format_object(plugin), user)
         self._plugins.append(plugin)
         if hasattr(plugin, "plugin_name"):
             self._plugin_names[plugin.plugin_name] = plugin

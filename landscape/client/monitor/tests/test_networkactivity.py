@@ -211,7 +211,7 @@ Inter-|   Receive                           |  Transmit
         """The network activity plugin is enabled by default."""
         self.assertIn(
             "NetworkActivity",
-            self.config.get_landscape_plugin_factories(),
+            self.config.landscape_plugin_factories,
         )
 
     def test_limit_amount_of_items(self):

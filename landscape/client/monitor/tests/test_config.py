@@ -13,10 +13,10 @@ class MonitorConfigurationTest(LandscapeTest):
         By default all plugins are enabled.
         """
         self.assertListEqual(
-            self.config.get_landscape_plugin_factories(),
+            self.config.landscape_plugin_factories,
             ALL_PLUGINS,
         )
-        self.assertEqual(self.config.get_root_plugin_factories(), [])
+        self.assertEqual(self.config.root_plugin_factories, [])
 
     def test_plugin_factories_with_monitor_plugins(self):
         """
@@ -25,7 +25,7 @@ class MonitorConfigurationTest(LandscapeTest):
         """
         self.config.load(["--monitor-plugins", "  ComputerInfo, LoadAverage "])
         self.assertEqual(
-            self.config.get_landscape_plugin_factories(),
+            self.config.landscape_plugin_factories,
             ["ComputerInfo", "LoadAverage"],
         )
 
@@ -50,10 +50,10 @@ class MonitorConfigurationTest(LandscapeTest):
             ],
         )
         self.assertEqual(
-            self.config.get_landscape_plugin_factories(),
+            self.config.landscape_plugin_factories,
             ["ComputerInfo", "LoadAverage"],
         )
         self.assertEqual(
-            self.config.get_root_plugin_factories(),
+            self.config.root_plugin_factories,
             ["UbuntuProInfo"],
         )
