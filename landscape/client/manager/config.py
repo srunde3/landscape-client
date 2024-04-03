@@ -13,6 +13,8 @@ ALL_PLUGINS = [
     "HardwareInfo",
     "KeystoneToken",
     "SnapManager",
+    "SnapServicesManager",
+    "UbuntuProInfo",
 ]
 
 

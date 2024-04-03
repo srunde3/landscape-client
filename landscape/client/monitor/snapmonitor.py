@@ -19,7 +19,7 @@ class SnapMonitor(DataWatcher):
         # The default interval is 30 minutes.
         self.run_interval = self.config.snap_monitor_interval
 
-        super(SnapMonitor, self).register(registry)
+        super().register(registry)
 
     def get_data(self):
         try:
@@ -29,9 +29,13 @@ class SnapMonitor(DataWatcher):
             return
 
         for i in range(len(snaps)):
+            snap_name = snaps[i]["name"]
             try:
-                config = snap_http.get_conf(snaps[i]["name"])
-            except SnapdHttpException:
+                config = snap_http.get_conf(snap_name).result
+            except SnapdHttpException as e:
+                logging.warning(
+                    f"Unable to get config for snap {snap_name}: {e}",
+                )
                 config = {}
 
             snaps[i]["config"] = json.dumps(config)
@@ -41,7 +45,10 @@ class SnapMonitor(DataWatcher):
         # coercion to strip out the unnecessaries, then sort on the snap
         # IDs to order the list.
         data = SNAPS.coerce(
-            {"type": "snaps", "snaps": {"installed": snaps}},
+            {
+                "type": "snaps",
+                "snaps": {"installed": snaps},
+            },
         )
         data["snaps"]["installed"].sort(key=lambda x: x["id"])
 

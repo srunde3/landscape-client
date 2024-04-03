@@ -1,5 +1,6 @@
 import os
 from unittest.mock import Mock
+from unittest.mock import patch
 
 from landscape.client.manager.plugin import FAILED
 from landscape.client.manager.plugin import SUCCEEDED
@@ -9,6 +10,7 @@ from landscape.client.monitor.usermonitor import UserMonitor
 from landscape.client.tests.helpers import LandscapeTest
 from landscape.client.tests.helpers import ManagerHelper
 from landscape.client.user.provider import UserManagementError
+from landscape.client.user.tests.helpers import FakeSnapdUserManagement
 from landscape.client.user.tests.helpers import FakeUserManagement
 from landscape.client.user.tests.helpers import FakeUserProvider
 from landscape.lib.persist import Persist
@@ -28,6 +30,7 @@ psmith:!:13348:0:99999:7:::
 sbarnes:$1$q7sz09uw$q.A3526M/SHu8vUb.Jo1A/:13349:0:99999:7:::
 """,
         )
+        self.empty_shadow_file = self.makeFile("")
         accepted_types = ["operation-result", "users"]
         self.broker_service.message_store.set_accepted_types(accepted_types)
         self.plugins = []
@@ -37,14 +40,18 @@ sbarnes:$1$q7sz09uw$q.A3526M/SHu8vUb.Jo1A/:13349:0:99999:7:::
         for plugin in self.plugins:
             plugin.stop()
 
-    def setup_environment(self, users, groups, shadow_file):
+    def setup_environment(self, users, groups, shadow_file, is_core=False):
         provider = FakeUserProvider(
             users=users,
             groups=groups,
             shadow_file=shadow_file,
         )
         user_monitor = UserMonitor(provider=provider)
-        management = FakeUserManagement(provider=provider)
+
+        if is_core:
+            management = FakeSnapdUserManagement(provider=provider)
+        else:
+            management = FakeUserManagement(provider=provider)
         user_manager = UserManager(
             management=management,
             shadow_file=shadow_file,
@@ -97,7 +104,7 @@ class UserOperationsMessagingTest(UserGroupTestBase):
                 ],
             )
 
-        self.setup_environment([], [], None)
+        self.setup_environment([], [], self.empty_shadow_file)
 
         result = self.manager.dispatch_message(
             {
@@ -155,7 +162,7 @@ class UserOperationsMessagingTest(UserGroupTestBase):
                 ],
             )
 
-        self.setup_environment([], [], None)
+        self.setup_environment([], [], self.empty_shadow_file)
 
         result = self.manager.dispatch_message(
             {
@@ -214,7 +221,7 @@ class UserOperationsMessagingTest(UserGroupTestBase):
                 ],
             )
 
-        self.setup_environment([], [], None)
+        self.setup_environment([], [], self.empty_shadow_file)
 
         result = self.manager.dispatch_message(
             {
@@ -257,7 +264,7 @@ class UserOperationsMessagingTest(UserGroupTestBase):
                 ],
             )
 
-        self.setup_environment([], [], None)
+        self.setup_environment([], [], self.empty_shadow_file)
 
         result = self.manager.dispatch_message(
             {
@@ -292,7 +299,7 @@ class UserOperationsMessagingTest(UserGroupTestBase):
             self.assertEqual(messages, new_messages)
             return result
 
-        plugin = self.setup_environment([], [], None)
+        plugin = self.setup_environment([], [], self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "username": "jdoe",
@@ -361,7 +368,7 @@ class UserOperationsMessagingTest(UserGroupTestBase):
             )
 
         users = [("bo", "x", 1000, 1000, "Bo,,,,", "/home/bo", "/bin/zsh")]
-        self.setup_environment(users, [], None)
+        self.setup_environment(users, [], self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "username": "jdoe",
@@ -376,6 +383,64 @@ class UserOperationsMessagingTest(UserGroupTestBase):
                 "home-number": "+123456",
             },
         )
+        result.addCallback(handle_callback)
+        return result
+
+    @patch("landscape.client.manager.usermanager.IS_CORE", "1")
+    def test_add_user_event_on_core(self):
+        """
+        When an C{add-user} event is received the user should be
+        added. Two messages should be generated: a C{users} message
+        with details about the change and an C{operation-result} with
+        details of the outcome of the operation.
+        """
+
+        def handle_callback(result):
+            messages = self.broker_service.message_store.get_pending_messages()
+            self.assertMessages(
+                messages,
+                [
+                    {
+                        "type": "operation-result",
+                        "status": SUCCEEDED,
+                        "operation-id": 123,
+                        "timestamp": 0,
+                        "result-text": "add_user succeeded",
+                    },
+                    {
+                        "timestamp": 0,
+                        "type": "users",
+                        "operation-id": 123,
+                        "create-users": [
+                            {
+                                "home-phone": None,
+                                "username": "john-doe",
+                                "uid": 1000,
+                                "enabled": True,
+                                "location": None,
+                                "work-phone": None,
+                                "name": "john.doe@example.com",
+                                "primary-gid": 1000,
+                            },
+                        ],
+                    },
+                ],
+            )
+
+        shadow_file = self.makeFile("""st3v3nmw:*:19758:0:99999:7:::""")
+        self.setup_environment([], [], shadow_file, is_core=True)
+
+        result = self.manager.dispatch_message(
+            {
+                "type": "add-user",
+                "username": "john-doe",
+                "email": "john.doe@example.com",
+                "sudoer": False,
+                "force-managed": True,
+                "operation-id": 123,
+            },
+        )
+
         result.addCallback(handle_callback)
         return result
 
@@ -425,7 +490,7 @@ class UserOperationsMessagingTest(UserGroupTestBase):
             ("jdoe", "x", 1001, 1000, "John Doe,,,,", "/home/bo", "/bin/zsh"),
         ]
         groups = [("users", "x", 1001, [])]
-        self.setup_environment(users, groups, None)
+        self.setup_environment(users, groups, self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "uid": 1001,
@@ -466,7 +531,7 @@ class UserOperationsMessagingTest(UserGroupTestBase):
         users = [
             ("jdoe", "x", 1000, 1000, "John Doe,,,,", "/home/bo", "/bin/zsh"),
         ]
-        plugin = self.setup_environment(users, [], None)
+        plugin = self.setup_environment(users, [], self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "username": "jdoe",
@@ -537,7 +602,7 @@ class UserOperationsMessagingTest(UserGroupTestBase):
             ("jdoe", "x", 1000, 1000, "John Doe,,,,", "/home/bo", "/bin/zsh"),
         ]
         groups = [("users", "x", 1001, ["jdoe"])]
-        self.setup_environment(users, groups, None)
+        self.setup_environment(users, groups, self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "username": "jdoe",
@@ -590,7 +655,7 @@ class UserOperationsMessagingTest(UserGroupTestBase):
         users = [
             ("jdoe", "x", 1000, 1000, "John Doe,,,,", "/home/bo", "/bin/zsh"),
         ]
-        self.setup_environment(users, [], None)
+        self.setup_environment(users, [], self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "username": "jdoe",
@@ -611,7 +676,7 @@ class UserOperationsMessagingTest(UserGroupTestBase):
             ("foo", "x", 1000, 1000, "Foo,,,,", "/home/foo", "/bin/zsh"),
             ("bar", "x", 1001, 1001, "Bar,,,,", "/home/bar", "/bin/zsh"),
         ]
-        self.setup_environment(users, [], None)
+        self.setup_environment(users, [], self.empty_shadow_file)
 
         def handle_callback(ignored):
             messages = self.broker_service.message_store.get_pending_messages()
@@ -687,7 +752,7 @@ class UserOperationsMessagingTest(UserGroupTestBase):
                 ],
             )
 
-        self.setup_environment([], [], None)
+        self.setup_environment([], [], self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "username": "jdoe",
@@ -735,7 +800,7 @@ class UserOperationsMessagingTest(UserGroupTestBase):
         users = [
             ("jdoe", "x", 1000, 1000, "John Doe,,,,", "/home/bo", "/bin/zsh"),
         ]
-        self.setup_environment(users, [], None)
+        self.setup_environment(users, [], self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "username": "jdoe",
@@ -823,10 +888,75 @@ class UserOperationsMessagingTest(UserGroupTestBase):
         users = [
             ("jdoe", "x", 1000, 1000, "John Doe,,,,", "/home/bo", "/bin/zsh"),
         ]
-        self.setup_environment(users, [], None)
+        self.setup_environment(users, [], self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "username": "jdoe",
+                "delete-home": True,
+                "type": "remove-user",
+                "operation-id": 39,
+            },
+        )
+        result.addCallback(handle_callback)
+        return result
+
+    @patch("landscape.client.manager.usermanager.IS_CORE", "1")
+    def test_remove_user_event_on_core(self):
+        """
+        When a C{remove-user} event is received, the user should be removed.
+        Two messages should be generated: a C{users} message with details
+        about the change and an C{operation-result} with details of the
+        outcome of the operation.
+        """
+
+        def handle_callback(result):
+            messages = self.broker_service.message_store.get_pending_messages()
+            self.assertEqual(len(messages), 3)
+            # Ignore the message created by plugin.run.
+            self.assertMessages(
+                [messages[2], messages[1]],
+                [
+                    {
+                        "timestamp": 0,
+                        "delete-users": ["john-doe"],
+                        "type": "users",
+                        "operation-id": 39,
+                    },
+                    {
+                        "type": "operation-result",
+                        "status": SUCCEEDED,
+                        "operation-id": 39,
+                        "timestamp": 0,
+                        "result-text": "remove_user succeeded",
+                    },
+                ],
+            )
+
+        users = [
+            (
+                "john-doe",
+                "x",
+                1000,
+                1000,
+                "john.doe@example.com,BtrGAhK,,",
+                "/home/user",
+                "/bin/zsh",
+            ),
+            (
+                "jane-doe",
+                "x",
+                1001,
+                1001,
+                "jane.doe@example.com,BtrGAhK,,",
+                "/home/user",
+                "/bin/zsh",
+            ),
+        ]
+        shadow_file = self.makeFile("""st3v3nmw:*:19758:0:99999:7:::""")
+        self.setup_environment(users, [], shadow_file, is_core=True)
+        result = self.manager.dispatch_message(
+            {
+                "username": "john-doe",
                 "delete-home": True,
                 "type": "remove-user",
                 "operation-id": 39,
@@ -913,7 +1043,7 @@ class UserOperationsMessagingTest(UserGroupTestBase):
                 ],
             )
 
-        self.setup_environment([], [], None)
+        self.setup_environment([], [], self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {"username": "jdoe", "operation-id": 99, "type": "lock-user"},
         )
@@ -1094,7 +1224,7 @@ class UserOperationsMessagingTest(UserGroupTestBase):
                 ],
             )
 
-        self.setup_environment([], [], None)
+        self.setup_environment([], [], self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {"username": "jdoe", "operation-id": 99, "type": "unlock-user"},
         )
@@ -1242,7 +1372,7 @@ class GroupOperationsMessagingTest(UserGroupTestBase):
                 ],
             )
 
-        self.setup_environment([], [], None)
+        self.setup_environment([], [], self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {"groupname": "bizdev", "type": "add-group", "operation-id": 123},
         )
@@ -1269,7 +1399,7 @@ class GroupOperationsMessagingTest(UserGroupTestBase):
             new_messages = message_store.get_pending_messages()
             self.assertEqual(messages, new_messages)
 
-        plugin = self.setup_environment([], [], None)
+        plugin = self.setup_environment([], [], self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {"groupname": "bizdev", "operation-id": 123, "type": "add-group"},
         )
@@ -1304,7 +1434,7 @@ class GroupOperationsMessagingTest(UserGroupTestBase):
             )
 
         groups = [("sales", "x", 1001, [])]
-        self.setup_environment([], groups, None)
+        self.setup_environment([], groups, self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {"groupname": "bizdev", "type": "add-group", "operation-id": 123},
         )
@@ -1350,7 +1480,7 @@ class GroupOperationsMessagingTest(UserGroupTestBase):
             self.assertMessages(messages, expected)
 
         groups = [("sales", "x", 50, [])]
-        self.setup_environment([], groups, None)
+        self.setup_environment([], groups, self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "groupname": "sales",
@@ -1383,7 +1513,7 @@ class GroupOperationsMessagingTest(UserGroupTestBase):
             self.assertEqual(messages, new_messages)
 
         groups = [("sales", "x", 50, [])]
-        plugin = self.setup_environment([], groups, None)
+        plugin = self.setup_environment([], groups, self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "gid": 50,
@@ -1439,7 +1569,7 @@ class GroupOperationsMessagingTest(UserGroupTestBase):
             )
 
         groups = [("sales", "x", 1001, [])]
-        plugin = self.setup_environment([], groups, None)
+        plugin = self.setup_environment([], groups, self.empty_shadow_file)
         result = plugin.run()
         result.addCallback(handle_callback1)
         return result
@@ -1479,7 +1609,7 @@ class GroupOperationsMessagingTest(UserGroupTestBase):
             ("jdoe", "x", 1000, 1000, "John Doe,,,,", "/bin/sh", "/home/jdoe"),
         ]
         groups = [("bizdev", "x", 1001, [])]
-        self.setup_environment(users, groups, None)
+        self.setup_environment(users, groups, self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "username": "jdoe",
@@ -1527,7 +1657,7 @@ class GroupOperationsMessagingTest(UserGroupTestBase):
             ("jdoe", "x", 1000, 1000, "John Doe,,,,", "/bin/sh", "/home/jdoe"),
         ]
         groups = [("bizdev", "x", 1001, [])]
-        self.setup_environment(users, groups, None)
+        self.setup_environment(users, groups, self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "username": "jdoe",
@@ -1564,7 +1694,7 @@ class GroupOperationsMessagingTest(UserGroupTestBase):
             ("jdoe", "x", 1000, 1000, "John Doe,,,,", "/bin/sh", "/home/jdoe"),
         ]
         groups = [("bizdev", "x", 1001, ["jdoe"])]
-        plugin = self.setup_environment(users, groups, None)
+        plugin = self.setup_environment(users, groups, self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "username": "jdoe",
@@ -1617,7 +1747,7 @@ class GroupOperationsMessagingTest(UserGroupTestBase):
             ("jdoe", "x", 1000, 1000, "John Doe,,,,", "/bin/sh", "/home/jdoe"),
         ]
         groups = [("bizdev", "x", 1001, [])]
-        self.setup_environment(users, groups, None)
+        self.setup_environment(users, groups, self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "username": "jdoe",
@@ -1665,7 +1795,7 @@ class GroupOperationsMessagingTest(UserGroupTestBase):
             ("jdoe", "x", 1000, 1000, "John Doe,,,,", "/bin/sh", "/home/jdoe"),
         ]
         groups = [("bizdev", "x", 1001, ["jdoe"])]
-        self.setup_environment(users, groups, None)
+        self.setup_environment(users, groups, self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "username": "jdoe",
@@ -1701,7 +1831,7 @@ class GroupOperationsMessagingTest(UserGroupTestBase):
             ("jdoe", "x", 1000, 1000, "John Doe,,,,", "/bin/sh", "/home/jdoe"),
         ]
         groups = [("bizdev", "x", 1001, ["jdoe"])]
-        plugin = self.setup_environment(users, groups, None)
+        plugin = self.setup_environment(users, groups, self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "username": "jdoe",
@@ -1756,7 +1886,7 @@ class GroupOperationsMessagingTest(UserGroupTestBase):
             ("jdoe", "x", 1000, 1000, "John Doe,,,,", "/bin/sh", "/home/jdoe"),
         ]
         groups = [("bizdev", "x", 1001, ["jdoe"])]
-        self.setup_environment(users, groups, None)
+        self.setup_environment(users, groups, self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "groupname": "bizdev",
@@ -1815,7 +1945,7 @@ class GroupOperationsMessagingTest(UserGroupTestBase):
             )
 
         groups = [("sales", "x", 1001, ["jdoe"])]
-        plugin = self.setup_environment([], groups, None)
+        plugin = self.setup_environment([], groups, self.empty_shadow_file)
         result = plugin.run()
         result.addCallback(handle_callback1)
         return result
@@ -1842,7 +1972,7 @@ class GroupOperationsMessagingTest(UserGroupTestBase):
             self.assertEqual(messages, new_messages)
 
         groups = [("sales", "x", 50, [])]
-        plugin = self.setup_environment([], groups, None)
+        plugin = self.setup_environment([], groups, self.empty_shadow_file)
         result = self.manager.dispatch_message(
             {
                 "groupname": "sales",
@@ -1893,7 +2023,7 @@ class GroupOperationsMessagingTest(UserGroupTestBase):
             )
 
         groups = [("sales", "x", 1001, [])]
-        plugin = self.setup_environment([], groups, None)
+        plugin = self.setup_environment([], groups, self.empty_shadow_file)
         result = plugin.run()
         result.addCallback(handle_callback1)
         return result

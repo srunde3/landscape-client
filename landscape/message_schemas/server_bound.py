@@ -808,6 +808,43 @@ SNAPS = Message(
     },
 )
 
+SNAP_SERVICES = Message(
+    "snap-services",
+    {
+        "services": KeyDict(
+            {
+                "running": List(
+                    KeyDict(
+                        {
+                            "name": Unicode(),
+                            "snap": Unicode(),
+                            "desktop-file": Unicode(),
+                            "daemon": Unicode(),
+                            "daemon-scope": Unicode(),
+                            "enabled": Bool(),
+                            "active": Bool(),
+                            "activators": List(
+                                Dict(Unicode(), Any(Unicode(), Bool())),
+                            ),
+                        },
+                        strict=False,
+                        optional=[
+                            "snap",
+                            "desktop-file",
+                            "daemon",
+                            "daemon-scope",
+                            "enabled",
+                            "active",
+                            "activators",
+                        ],
+                    ),
+                ),
+            },
+            strict=False,
+        ),
+    },
+)
+
 message_schemas = (
     ACTIVE_PROCESS_INFO,
     COMPUTER_UPTIME,
@@ -856,4 +893,5 @@ message_schemas = (
     UBUNTU_PRO_REBOOT_REQUIRED,
     SNAPS,
     SNAP_INFO,
+    SNAP_SERVICES,
 )

@@ -1,4 +1,3 @@
-import json
 import logging
 from collections import deque
 
@@ -13,41 +12,13 @@ from landscape.client.snap_http import SnapdHttpException
 from landscape.client.snap_http import SUCCESS_STATUSES
 
 
-class SnapManager(ManagerPlugin):
-    """
-    Plugin that updates the state of snaps on this machine, installing,
-    removing, refreshing, enabling, and disabling them in response to messages.
-
-    Changes trigger SnapMonitor to send an updated state message immediately.
-    """
+class BaseSnapManager(ManagerPlugin):
+    """Base class that provides machinery for snap manager tasks."""
 
     def __init__(self):
         super().__init__()
 
-        self.SNAP_METHODS = {
-            "install-snaps": snap_http.install,
-            "install-snaps-batch": snap_http.install_all,
-            "remove-snaps": snap_http.remove,
-            "remove-snaps-batch": snap_http.remove_all,
-            "refresh-snaps": snap_http.refresh,
-            "refresh-snaps-batch": snap_http.refresh_all,
-            "hold-snaps": snap_http.hold,
-            "hold-snaps-batch": snap_http.hold_all,
-            "unhold-snaps": snap_http.unhold,
-            "unhold-snaps-batch": snap_http.unhold_all,
-            "set-snap-config": snap_http.set_conf,
-        }
-
-    def register(self, registry):
-        super().register(registry)
-        self.config = registry.config
-
-        registry.register_message("install-snaps", self._handle_snap_task)
-        registry.register_message("remove-snaps", self._handle_snap_task)
-        registry.register_message("refresh-snaps", self._handle_snap_task)
-        registry.register_message("hold-snaps", self._handle_snap_task)
-        registry.register_message("unhold-snaps", self._handle_snap_task)
-        registry.register_message("set-snap-config", self._handle_snap_task)
+        self.SNAP_METHODS = {}
 
     def _handle_snap_task(self, message):
         """
@@ -86,9 +57,9 @@ class SnapManager(ManagerPlugin):
                 snaps,
                 **snap_args,
             )
-            queue.append((response["change"], "BATCH"))
+            queue.append((response.change, "BATCH"))
         except SnapdHttpException as e:
-            result = json.loads(e.args[0])["result"]
+            result = e.json["result"]
             logging.error(
                 f"Error in {message_type}: {message}",
             )
@@ -130,9 +101,9 @@ class SnapManager(ManagerPlugin):
                     name,
                     **snap_args,
                 )
-                queue.append((response["change"], name))
+                queue.append((response.change, name))
             except SnapdHttpException as e:
-                result = json.loads(e.args[0])["result"]
+                result = e.json["result"]
                 logging.error(
                     f"Error in {message_type} for '{name}': {message}",
                 )
@@ -163,7 +134,7 @@ class SnapManager(ManagerPlugin):
             logging.info("Polling snapd for status of pending snap changes")
 
             try:
-                result = snap_http.check_changes().get("result", [])
+                result = snap_http.check_changes().result
                 result_dict = {c["id"]: c for c in result}
             except SnapdHttpException as e:
                 logging.error(f"Error checking status of snap changes: {e}")
@@ -208,7 +179,7 @@ class SnapManager(ManagerPlugin):
 
         response = snap_method(*args, **kwargs)
 
-        if "change" not in response:
+        if response.change is None:
             raise SnapdHttpException(response)
 
         return response
@@ -245,15 +216,55 @@ class SnapManager(ManagerPlugin):
 
         logging.debug("Sending snap-action-done response")
 
-        # Kick off an immediate SnapMonitor message as well.
-        self._send_installed_snap_update()
+        # Kick off an immediate monitor message as well.
+        self._send_snap_update()
         return self.registry.broker.send_message(
             message,
             self._session_id,
             True,
         )
 
-    def _send_installed_snap_update(self):
+    def _send_snap_update(self):
+        """Kick off an immediate monitor message."""
+
+
+class SnapManager(BaseSnapManager):
+    """
+    Plugin that updates the state of snaps on this machine, installing,
+    removing, refreshing, enabling, and disabling them in response to messages.
+
+    Changes trigger SnapMonitor to send an updated state message immediately.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+        self.SNAP_METHODS = {
+            "install-snaps": snap_http.install,
+            "install-snaps-batch": snap_http.install_all,
+            "remove-snaps": snap_http.remove,
+            "remove-snaps-batch": snap_http.remove_all,
+            "refresh-snaps": snap_http.refresh,
+            "refresh-snaps-batch": snap_http.refresh_all,
+            "hold-snaps": snap_http.hold,
+            "hold-snaps-batch": snap_http.hold_all,
+            "unhold-snaps": snap_http.unhold,
+            "unhold-snaps-batch": snap_http.unhold_all,
+            "set-snap-config": snap_http.set_conf,
+        }
+
+    def register(self, registry):
+        super().register(registry)
+        self.config = registry.config
+
+        registry.register_message("install-snaps", self._handle_snap_task)
+        registry.register_message("remove-snaps", self._handle_snap_task)
+        registry.register_message("refresh-snaps", self._handle_snap_task)
+        registry.register_message("hold-snaps", self._handle_snap_task)
+        registry.register_message("unhold-snaps", self._handle_snap_task)
+        registry.register_message("set-snap-config", self._handle_snap_task)
+
+    def _send_snap_update(self):
         try:
             installed_snaps = snap_http.list().result
         except SnapdHttpException as e:
@@ -266,7 +277,7 @@ class SnapManager(ManagerPlugin):
             return self.registry.broker.send_message(
                 {
                     "type": "snaps",
-                    "snaps": installed_snaps,
+                    "snaps": {"installed": installed_snaps},
                 },
                 self._session_id,
                 True,

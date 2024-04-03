@@ -106,7 +106,7 @@ VmallocChunk:   107432 kB
         messages = self.mstore.get_pending_messages()
         self.assertEqual(len(messages), 1)
         self.assertEqual(messages[0]["type"], "computer-info")
-        self.assertNotEquals(len(messages[0]["hostname"]), 0)
+        self.assertNotEqual(len(messages[0]["hostname"]), 0)
         self.assertTrue(re.search(r"\w", messages[0]["hostname"]))
 
     def test_only_report_changed_hostnames(self):
@@ -560,7 +560,7 @@ DISTRIB_NEW_UNEXPECTED_KEY=ooga
             result,
         )
 
-    @mock.patch("landscape.client.monitor.computerinfo.get_assertions")
+    @mock.patch("landscape.client.snap_utils.get_assertions")
     def test_snap_info(self, mock_get_assertions):
         """Test getting the snap info message."""
         mock_get_assertions.return_value = [
@@ -586,7 +586,7 @@ DISTRIB_NEW_UNEXPECTED_KEY=ooga
             "03961d5d-26e5-443f-838d-6db046126bea",
         )
 
-    @mock.patch("landscape.client.monitor.computerinfo.get_assertions")
+    @mock.patch("landscape.client.snap_utils.get_assertions")
     def test_snap_info_no_results(self, mock_get_assertions):
         """Test getting the snap info message when there are no results.
 

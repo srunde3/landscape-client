@@ -8,18 +8,24 @@ class BPickleTest(unittest.TestCase):
         self.assertEqual(bpickle.loads(bpickle.dumps(1)), 1)
 
     def test_float(self):
-        self.assertAlmostEquals(bpickle.loads(bpickle.dumps(2.3)), 2.3)
+        self.assertAlmostEqual(bpickle.loads(bpickle.dumps(2.3)), 2.3)
 
     def test_float_scientific_notation(self):
         number = 0.00005
         self.assertTrue("e" in repr(number))
-        self.assertAlmostEquals(bpickle.loads(bpickle.dumps(number)), number)
+        self.assertAlmostEqual(bpickle.loads(bpickle.dumps(number)), number)
 
     def test_bytes(self):
         self.assertEqual(bpickle.loads(bpickle.dumps(b"foo")), b"foo")
 
+    def test_bytes_negative_length(self):
+        self.assertRaises(ValueError, bpickle.loads, b"ds-4:tests5:thing;")
+
     def test_string(self):
         self.assertEqual(bpickle.loads(bpickle.dumps("foo")), "foo")
+
+    def test_string_negative_length(self):
+        self.assertRaises(ValueError, bpickle.loads, b"du-4:testu5:thing;")
 
     def test_list(self):
         self.assertEqual(
