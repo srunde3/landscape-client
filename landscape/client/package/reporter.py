@@ -541,21 +541,30 @@ class PackageReporter(PackageTaskHandler):
         added_hashes = []
         packages = []
         for package in self._facade.get_packages():
-            sha256 = package.sha256
-            if sha256 in hashes:
-                added_hashes.append(sha256)
+            # NOTE: modified to use the Debian hash instead of the Landscape hash.
+            # The SHA256 is not available for installed packages, and raises a
+            # SystemError from the C binding. We'll fall back to the Landscape
+            # hash for now.
+            skeleton = self._facade.get_package_skeleton(package)
+            try:
+                digest = bytes.fromhex(package.sha256)
+            except SystemError:
+                digest = skeleton.get_hash()
+
+            if digest in hashes:
+                added_hashes.append(digest)
                 packages.append(
                     {
-                        "type": package.type,
-                        "name": package.name,
-                        "version": package.version,
-                        "section": package.section,
-                        "summary": package.summary,
-                        "description": package.description,
-                        "size": package.size,
-                        "installed-size": package.installed_size,
-                        "relations": package.relations,
-                        "sha256": sha256,
+                        "type": skeleton.type,
+                        "name": skeleton.name,
+                        "version": skeleton.version,
+                        "section": skeleton.section,
+                        "summary": skeleton.summary,
+                        "description": skeleton.description,
+                        "size": skeleton.size,
+                        "installed-size": skeleton.installed_size,
+                        "relations": skeleton.relations,
+                        "sha256": digest,
                     },
                 )
 

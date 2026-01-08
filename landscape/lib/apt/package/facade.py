@@ -323,8 +323,20 @@ class AptFacade:
                 # hash.
 
                 # NOTE: modified to use the Debian hash instead of the Landscape hash.
-                self._pkg2hash[(package, version)] = version.sha256
-                self._hash2pkg[version.sha256] = version
+                # The SHA256 is not available for installed packages, and raises a
+                # SystemError from the C binding. We'll fall back to the Landscape
+                # hash for now.
+                try:
+                    digest = bytes.fromhex(version.sha256)
+                    self._pkg2hash[(package, version)] = digest
+                    self._hash2pkg[digest] = version
+                except SystemError:
+                    skeleton_hash = self.get_package_skeleton(
+                        version,
+                        with_info=False,
+                    ).get_hash()
+                    self._pkg2hash[(package, version)] = skeleton_hash
+                    self._hash2pkg[skeleton_hash] = version
         self._channels_loaded = True
 
     def ensure_channels_reloaded(self):
