@@ -164,10 +164,12 @@ class PackageReporter(PackageTaskHandler):
         result.addCallback(lambda x: self.run_apt_update())
 
         # If the appropriate hash=>id db is not there, fetch it
-        result.addCallback(lambda x: self.fetch_hash_id_db())
+        # NOTE: unused for in the proof-of-concept for Debian hashes.
+        # result.addCallback(lambda x: self.fetch_hash_id_db())
 
         # Attach the hash=>id database if available
-        result.addCallback(lambda x: self.use_hash_id_db())
+        # NOTE: unused for in the proof-of-concept for Debian hashes.
+        # result.addCallback(lambda x: self.use_hash_id_db())
 
         # Now, handle any queued tasks.
         result.addCallback(lambda x: self.handle_tasks())
@@ -199,6 +201,8 @@ class PackageReporter(PackageTaskHandler):
         the former is not set.
 
         Fetch failures are handled gracefully and logged as appropriate.
+
+        NOTE: unused in the proof-of-concept for Debian hashes.
         """
 
         def fetch_it(hash_id_db_filename):
@@ -496,11 +500,11 @@ class PackageReporter(PackageTaskHandler):
 
         hash_ids = {}
 
-        for hash, id in zip(request.hashes, message["ids"]):
-            if id is None:
-                unknown_hashes.append(hash)
+        for package_hash, package_id in zip(request.hashes, message["ids"]):
+            if package_id is None:
+                unknown_hashes.append(package_hash)
             else:
-                hash_ids[hash] = id
+                hash_ids[package_hash] = package_id
 
         self._store.set_hash_ids(hash_ids)
 
@@ -537,21 +541,21 @@ class PackageReporter(PackageTaskHandler):
         added_hashes = []
         packages = []
         for package in self._facade.get_packages():
-            hash = self._facade.get_package_hash(package)
-            if hash in hashes:
-                added_hashes.append(hash)
-                skeleton = self._facade.get_package_skeleton(package)
+            sha256 = package.sha256
+            if sha256 in hashes:
+                added_hashes.append(sha256)
                 packages.append(
                     {
-                        "type": skeleton.type,
-                        "name": skeleton.name,
-                        "version": skeleton.version,
-                        "section": skeleton.section,
-                        "summary": skeleton.summary,
-                        "description": skeleton.description,
-                        "size": skeleton.size,
-                        "installed-size": skeleton.installed_size,
-                        "relations": skeleton.relations,
+                        "type": package.type,
+                        "name": package.name,
+                        "version": package.version,
+                        "section": package.section,
+                        "summary": package.summary,
+                        "description": package.description,
+                        "size": package.size,
+                        "installed-size": package.installed_size,
+                        "relations": package.relations,
+                        "sha256": sha256,
                     },
                 )
 
@@ -620,6 +624,8 @@ class PackageReporter(PackageTaskHandler):
 
         Hashes previously requested won't be requested again, unless they
         have already expired and removed from the database.
+
+        NOTE: this has been modified for Debian hash package management.
         """
         self._facade.ensure_channels_reloaded()
 

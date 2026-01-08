@@ -9,10 +9,12 @@ import time
 from collections.abc import Container
 from io import StringIO
 from operator import attrgetter
+from typing import Iterable
 
 import apt
 import apt_inst
 import apt_pkg
+from apt.package import Version
 from apt.progress.base import InstallProgress
 from apt.progress.text import AcquireProgress
 from aptsources.sourceslist import SourcesList
@@ -226,7 +228,7 @@ class AptFacade:
             os.makedirs(full_path)
         return full_path
 
-    def get_packages(self):
+    def get_packages(self) -> Iterable[Version]:
         """Get all the packages available in the channels."""
         return self._hash2pkg.values()
 
@@ -314,15 +316,15 @@ class AptFacade:
             if not self._is_main_architecture(package):
                 continue
             for version in package.versions:
-                skeleton_hash = self.get_package_skeleton(
-                    version,
-                    with_info=False,
-                ).get_hash()
+                # NOTE: need to verify following comment under new Debian hash scheme.
+
                 # Use a tuple including the package, since the Version
                 # objects of two different packages can have the same
                 # hash.
-                self._pkg2hash[(package, version)] = skeleton_hash
-                self._hash2pkg[skeleton_hash] = version
+
+                # NOTE: modified to use the Debian hash instead of the Landscape hash.
+                self._pkg2hash[(package, version)] = version.sha256
+                self._hash2pkg[version.sha256] = version
         self._channels_loaded = True
 
     def ensure_channels_reloaded(self):
@@ -512,6 +514,8 @@ class AptFacade:
             necessary if the skeleton will be used to build a hash.
 
         @return: a L{PackageSkeleton} object.
+
+        NOTE not needed with Debian hashing scheme.
         """
         return build_skeleton_apt(pkg, with_info=with_info, with_unicode=True)
 

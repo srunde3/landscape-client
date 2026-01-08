@@ -22,7 +22,9 @@ class InvalidHashIdDb(Exception):
 class HashIdStore:
     """C{HashIdStore} stores package hash=>id mappings in a file.
 
-    The file is a SQLite database that contains a single table called "hash".
+    The file is a SQLite database that contains a single table that
+    maps Debian hashes to package IDs.
+
     The table schema is defined in L{ensure_hash_id_schema}.
 
     @param filename: The file where the mappings are persisted to.
@@ -41,6 +43,8 @@ class HashIdStore:
         """Set the ids of a set of hashes.
 
         @param hash_ids: a C{dict} of hash=>id mappings.
+
+        NOTE: these should be Debian hashes.
         """
         for hash, id in hash_ids.items():
             cursor.execute(
@@ -53,6 +57,8 @@ class HashIdStore:
         """Return the id associated to C{hash}, or C{None} if not available.
 
         @param hash: a C{bytes} representing a hash.
+
+        NOTE: this is the Debian hash.
         """
         cursor.execute(
             "SELECT id FROM hash WHERE hash=?",
@@ -65,13 +71,21 @@ class HashIdStore:
 
     @with_cursor
     def get_hash_ids(self, cursor):
-        """Return a C{dict} holding all the available hash=>id mappings."""
+        """
+        Return a C{dict} holding all the available hash=>id mappings.
+
+        NOTE: these are Debian hashes.
+        """
         cursor.execute("SELECT hash, id FROM hash")
         return {bytes(row[0]): row[1] for row in cursor.fetchall()}
 
     @with_cursor
     def get_id_hash(self, cursor, id):
-        """Return the hash associated to C{id}, or C{None} if not available."""
+        """
+        Return the hash associated to C{id}, or C{None} if not available.
+
+        NOTE: this is a Debian hash.
+        """
         assert isinstance(id, int)
         cursor.execute("SELECT hash FROM hash WHERE id=?", (id,))
         value = cursor.fetchone()
@@ -153,6 +167,8 @@ class PackageStore(HashIdStore):
         This method composes the L{HashIdStore.get_hash_id} methods of all
         the attached lookaside databases, falling back to the main one, as
         described in L{add_hash_id_db}.
+
+        NOTE: this expects the Debian hash.
         """
         assert isinstance(hash, bytes)
 
@@ -171,6 +187,8 @@ class PackageStore(HashIdStore):
         This method composes the L{HashIdStore.get_id_hash} methods of all
         the attached lookaside databases, falling back to the main one in
         case the hash associated to C{id} is not found in any of them.
+
+        NOTE: this returns the Debian hash.
         """
         for store in self._hash_id_stores:
             hash = store.get_id_hash(id)
@@ -299,6 +317,9 @@ class PackageStore(HashIdStore):
 
     @with_cursor
     def add_hash_id_request(self, cursor, hashes):
+        """
+        NOTE: hashes should be Debian hashes
+        """
         hashes = list(hashes)
         cursor.execute(
             "INSERT INTO hash_id_request (hashes, timestamp) VALUES (?,?)",
@@ -401,6 +422,9 @@ class HashIDRequest:
     @property
     @with_cursor
     def hashes(self, cursor):
+        """
+        NOTE: returns the Debian hashes.
+        """
         cursor.execute(
             "SELECT hashes FROM hash_id_request WHERE id=?",
             (self.id,),
@@ -463,6 +487,8 @@ def ensure_hash_id_schema(db):
     """Create all tables needed by a L{HashIdStore}.
 
     @param db: A connection to a SQLite database.
+
+    NOTE this hash is the Debian hash.
     """
     cursor = db.cursor()
     try:
