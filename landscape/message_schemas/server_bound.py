@@ -510,6 +510,7 @@ ADD_PACKAGES = Message(
                     "size": Any(Int(), Constant(None)),
                     "version": Unicode(),
                     "type": Int(),
+                    "sha256": Bytes(),
                 },
             ),
         ),
