@@ -103,7 +103,18 @@ You can run a specific test by running the following (for example):
 python3 -m twisted.trial landscape.client.broker.tests.test_client.BrokerClientTest.test_ping
 ```
 
-### Building the Landscape Client snap
+
+## Building the Landscape Client Debian packages
+
+To build `.deb` packages for local installation or testing:
+
+```shell
+make quick-build
+```
+
+This produces unsigned `landscape-client` and `landscape-common` packages in the parent directory. It skips lintian and tests.
+
+## Building the Landscape Client snap
 
 First, you need to ensure that you have the appropriate tools installed:
 

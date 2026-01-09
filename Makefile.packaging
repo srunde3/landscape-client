@@ -32,6 +32,10 @@ updateversion:
 package: clean prepchangelog updateversion  ## Generate the debian packages (use with DEBUILD_OPTS="-us -uc").
 	debuild -b $(DEBUILD_OPTS)
 
+.PHONY: quick-build
+quick-build: clean updateversion  ## Quick binary package build (no changelog, no signing, no tests)
+	DEB_BUILD_OPTIONS=nocheck debuild --no-lintian -b --no-sign
+
 .PHONY: sourcepackage
 sourcepackage: tarball prepchangelog updateversion
 	# need to remove sdist here because it doesn't exist in the
